@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 声音克隆 & 影片生成工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 穩定版轉檔引擎 -->
     <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 flex justify-center items-center">
     <div class="w-full max-w-lg bg-white rounded-2xl shadow-md p-6">
-        <h2 class="text-2xl font-bold text-center mb-4">🎙️ AI 声音克隆 + 影片生成</h2>
+        <h2 class="text-2xl font-bold text-center mb-4">🎙️ AI 声音克隆 & 影片生成</h2>
 
         <!-- 声音克隆区域 -->
         <div class="bg-blue-50 p-4 rounded-xl mb-5 border border-blue-200">
@@ -63,39 +62,30 @@
         <!-- 结果展示 -->
         <div id="result" class="mt-4 p-3 bg-green-50 rounded hidden">
             <p class="font-medium">✅ 处理完成</p>
-            <p class="text-sm mt-1">原视频：<a id="vUrl" target="_blank" class="text-blue-500 break-all"></a></p>
-            <p class="text-sm mt-1">我的声音配音：<a id="aUrl" target="_blank" class="text-blue-500 break-all"></a></p>
-            <p class="text-sm mt-1">繁体字幕：<a id="sUrl" target="_blank" class="text-blue-500 break-all"></a></p>
+            <p class="text-sm mt-1">原视频：<a id="vUrl" target="_blank" class="text-blue-50 break-all"></a></p>
+            <p class="text-sm mt-1">我的声音配音：<a id="aUrl" target="_blank" class="text-blue-50 break-all"></a></p>
+            <p class="text-sm mt-1">繁体字幕：<a id="sUrl" target="_blank" class="text-blue-50 break-all"></a></p>
         </div>
     </div>
 
 <script>
-    // ========== 填写你的 GAS Web App 地址 ==========
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzqGzi4tNZo5DtedZWgRRhrE8DpAvKLZW83rp7xyXLkxfautVX0IVCX67VjdtiFpFCMmw/exec";
-
-    // 讀取本地保存的聲音ID
     let MY_VOICE_ID = localStorage.getItem("MY_VOICE_ID") || "";
 
-    // 即時顯示數值
     const speed = document.getElementById("speed");
     const stability = document.getElementById("stability");
     speed.oninput = () => document.getElementById("speedVal").innerText = speed.value + "x";
     stability.oninput = () => document.getElementById("stableVal").innerText = stability.value;
 
-    // ==============================================
-    // 最強穩定版：M4A / MP3 / WAV 自動轉 MP3
-    // ==============================================
     async function convertToMp3(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
                 audioCtx.decodeAudioData(arrayBuffer).then(buffer => {
                     const sampleRate = 44100;
-                    const channels = 1;
-                    const mp3enc = new lamejs.Mp3Encoder(channels, sampleRate, 128);
+                    const mp3enc = new lamejs.Mp3Encoder(1, sampleRate, 128);
                     const leftChannel = buffer.getChannelData(0);
                     const data = [];
 
@@ -111,7 +101,6 @@
                     const left16 = floatTo16(leftChannel);
                     const mp3buf = mp3enc.encodeBuffer(left16);
                     if (mp3buf.length > 0) data.push(mp3buf);
-
                     const end = mp3enc.flush();
                     if (end.length > 0) data.push(end);
 
@@ -123,90 +112,66 @@
         });
     }
 
-    // ==============================================
-    // 克隆聲音（自動處理 M4A）
-    // ==============================================
     document.getElementById("cloneBtn").onclick = async () => {
         const file = document.getElementById("voiceFile").files[0];
         const name = document.getElementById("voiceName").value.trim();
         const tip = document.getElementById("cloneTip");
 
-        if (!file || !name) {
-            alert("請上傳錄音並輸入聲音名稱");
-            return;
-        }
-
+        if (!file || !name) { alert("请上传录音并填写声音名称"); return; }
         tip.classList.remove("hidden");
-        tip.innerText = "🔄 音訊轉檔中 (M4A→MP3)，請稍候...";
+        tip.innerText = "🔄 转档中，请稍候...";
         tip.style.color = "blue";
 
         try {
             const mp3Blob = await convertToMp3(file);
-
             const reader = new FileReader();
             reader.readAsDataURL(mp3Blob);
             reader.onload = async function(e) {
                 const base64 = e.target.result.split(',')[1];
-
                 const res = await fetch(GAS_URL, {
                     method: "POST",
                     body: JSON.stringify({
                         action: "clone",
                         name: name,
-                        type: "audio/mp3",
                         base64: base64
                     })
                 });
-
                 const data = await res.json();
                 if (data.success) {
                     MY_VOICE_ID = data.voice_id;
                     localStorage.setItem("MY_VOICE_ID", MY_VOICE_ID);
-                    tip.innerText = "✅ 克隆成功！已綁定你的聲音";
+                    tip.innerText = "✅ 克隆成功！";
                     tip.style.color = "green";
                 } else {
-                    tip.innerText = "❌ 失敗：" + data.msg;
+                    tip.innerText = "❌ 失败：" + data.msg;
                     tip.style.color = "red";
                 }
             };
         } catch (err) {
-            tip.innerText = "❌ 轉檔失敗，請重新上傳";
+            tip.innerText = "❌ 转档失败";
             tip.style.color = "red";
-            console.error(err);
         }
     };
 
-    // ==============================================
-    // 生成配音 + 字幕
-    // ==============================================
     document.getElementById("genBtn").onclick = async () => {
-        if (!MY_VOICE_ID) {
-            alert("請先克隆你的聲音！");
-            return;
-        }
-
+        if (!MY_VOICE_ID) { alert("请先克隆声音！"); return; }
         const video = document.getElementById("videoFile").files[0];
         const content = document.getElementById("content").value.trim();
-
-        if (!video || !content) {
-            alert("請上傳影片並輸入文案");
-            return;
-        }
+        if (!video || !content) { alert("请上传视频并输入文案"); return; }
 
         const btn = document.getElementById("genBtn");
         const status = document.getElementById("status");
         const result = document.getElementById("result");
-
+        
         btn.disabled = true;
         status.classList.remove("hidden");
-        status.innerText = "處理中，請稍候...";
+        status.innerText = "处理中...";
         result.classList.add("hidden");
 
         const reader = new FileReader();
         reader.readAsDataURL(video);
         reader.onload = async function(e) {
             const base64 = e.target.result.split(',')[1];
-
             const res = await fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({
@@ -220,7 +185,6 @@
                     stability: stability.value
                 })
             });
-
             const data = await res.json();
             if (data.success) {
                 status.innerText = "✅ 生成完成！";
@@ -232,7 +196,7 @@
                 document.getElementById("sUrl").innerText = data.subtitle;
                 result.classList.remove("hidden");
             } else {
-                status.innerText = "❌ 失敗：" + data.msg;
+                status.innerText = "❌ 失败：" + data.msg;
             }
             btn.disabled = false;
         };
