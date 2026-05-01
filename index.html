@@ -90,18 +90,21 @@
         <div id="historySection" class="mt-6 hidden">
             <h3 class="font-bold text-gray-700 mb-2">📂 上一次生成檔案</h3>
             <div class="bg-gray-50 p-3 rounded-lg border text-sm">
-                <p class="mb-1">視頻：<a id="hVideo" download class="text-blue-600">下載</a></p>
-                <p class="mb-1">配音：<a id="hAudio" download class="text-blue-600">下載</a></p>
-                <p>字幕：<a id="hSub" download class="text-blue-600">下載</a></p>
+                <p>
+                    影片：
+                    <a id="hVideo" target="_blank" class="text-blue-600 mx-1">線上觀看</a>
+                    <a id="hVideoDl" download class="text-blue-600 mx-1">下載</a>
+                </p>
             </div>
         </div>
 
-        <!-- 结果展示 -->
+        <!-- 结果展示（仅视频） -->
         <div id="result" class="mt-4 p-3 bg-green-50 rounded hidden">
             <p class="font-medium">✅ 處理完成！</p>
-            <p class="text-sm mt-1">視頻：<a id="vUrl" target="_blank" download class="text-blue-60 break-all">下載</a></p>
-            <p class="text-sm mt-1">配音：<a id="aUrl" target="_blank" download class="text-blue-60 break-all">下載</a></p>
-            <p class="text-sm mt-1">字幕：<a id="sUrl" target="_blank" download class="text-blue-60 break-all">下載</a></p>
+            <p class="mt-2">
+                <a id="vUrl" target="_blank" class="text-blue-600 px-2">線上觀看</a>
+                <a id="vDl" download class="text-blue-600 px-2">下載影片</a>
+            </p>
         </div>
     </div>
 
@@ -117,20 +120,19 @@
     const progressBar = document.getElementById("progressBar");
     const statusText = document.getElementById("statusText");
 
-    // 读取历史记录
+    // 读取历史记录（仅保存视频）
     function loadHistory() {
         const hist = JSON.parse(localStorage.getItem("LAST_RESULT") || "null");
         if (hist) {
             document.getElementById("hVideo").href = hist.video;
-            document.getElementById("hAudio").href = hist.audio;
-            document.getElementById("hSub").href = hist.subtitle;
+            document.getElementById("hVideoDl").href = hist.video;
             document.getElementById("historySection").classList.remove("hidden");
         }
     }
 
-    // 保存历史记录
-    function saveHistory(video, audio, subtitle) {
-        const data = { video, audio, subtitle };
+    // 保存历史（仅保存视频）
+    function saveHistory(video) {
+        const data = { video };
         localStorage.setItem("LAST_RESULT", JSON.stringify(data));
         loadHistory();
     }
@@ -287,13 +289,13 @@
                     statusText.innerText = "✅ 處理完成！";
                     statusText.style.color = "green";
                     
+                    // 只赋值视频
                     document.getElementById("vUrl").href = data.video;
-                    document.getElementById("aUrl").href = data.audio;
-                    document.getElementById("sUrl").href = data.subtitle;
+                    document.getElementById("vDl").href = data.video;
                     result.classList.remove("hidden");
 
-                    // 保存历史记录
-                    saveHistory(data.video, data.audio, data.subtitle);
+                    // 仅保存视频到历史
+                    saveHistory(data.video);
                 } else {
                     statusText.innerText = "❌ 失敗：" + data.msg;
                     statusText.style.color = "red";
