@@ -1,145 +1,173 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>彥彬 🌿系統美學</title>
-  <style>
-    :root {
-      --bg: #fffdf7;
-      --text: #333;
-      --subtext: #777;
-      --accent: #d4af37;
-      --shadow: rgba(0, 0, 0, 0.08);
-    }
-
-    body {
-      margin: 0;
-      padding: 24px 16px;
-      font-family: 'Helvetica Neue', 'Segoe UI', sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 500px;
-      background: white;
-      padding: 20px;
-      border-radius: 18px;
-      box-shadow: 0 8px 30px var(--shadow);
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 1.6em;
-      margin-bottom: 12px;
-    }
-
-    p {
-      font-size: 1em;
-      color: var(--subtext);
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .footer {
-      text-align: center;
-      font-size: 0.85em;
-      color: #bbb;
-      margin-top: 30px;
-    }
-
-    .btn {
-      background-color: var(--accent);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      font-size: 1em;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      transition: background-color 0.2s;
-    }
-
-    .btn:hover {
-      background-color: #bfa332;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 彥彬 影音系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="container">
-    <h1>🌿 搶先預約</h1>
-    <p>搶先預約、健康講座</p>
-    <button class="btn" onclick="handleClick()">👉 點擊前往預約</button>
-    <div class="footer">© 2025 彥彬 🌿系統美學 · 保留所有權利</div>
-  </div>
+<body class="bg-gray-100 min-h-screen p-4 flex justify-center items-center">
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-md p-6">
+        <h2 class="text-2xl font-bold text-center mb-4">🎙️ AI 声音克隆 + 影片生成</h2>
 
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script>
-    const liffId = '2007475335-Z0LKm1wQ';
-    const gasUrl = 'https://script.google.com/macros/s/AKfycbwS1hebUmigYIrY04BWyZ-en7Vx27Yr0KhbeWNIcoc_4kgZZkZ2QforhetnoH03hzx7/exec';
-    const redirectUrl = 'https://lihi.cc/nXzqN';
+        <!-- 声音克隆区域 -->
+        <div class="bg-blue-50 p-4 rounded-xl mb-5 border border-blue-200">
+            <h3 class="font-bold text-blue-700 mb-2">第一步：克隆你的声音</h3>
+            <p class="text-xs text-gray-500 mb-2">上传30-60秒无杂音录音(MP3/WAV)</p>
+            <input type="file" id="voiceFile" accept="audio/mp3,audio/wav" class="w-full border p-2 rounded mb-2">
+            <input type="text" id="voiceName" placeholder="给声音起个名字" class="w-full border p-2 rounded mb-2">
+            <button id="cloneBtn" class="w-full bg-blue-600 text-white py-2 rounded">克隆我的声音</button>
+            <div id="cloneTip" class="text-sm mt-2 hidden"></div>
+        </div>
 
-    let liffReady = false;
+        <!-- 视频上传 -->
+        <div class="mb-4">
+            <label class="font-medium block mb-1">第二步：上传MP4视频</label>
+            <input type="file" id="videoFile" accept="video/mp4" class="w-full border p-2 rounded">
+        </div>
 
-    async function initLiff() {
-      if (!liffReady) {
-        try {
-          await liff.init({ liffId });
-          liffReady = true;
-        } catch (err) {
-          console.error("LIFF 初始化失敗", err);
-        }
-      }
-    }
+        <!-- 文案输入 -->
+        <div class="mb-4">
+            <label class="font-medium block mb-1">第三步：配音文案</label>
+            <textarea id="content" rows="4" class="w-full border p-2 rounded" placeholder="输入你要配音的文字"></textarea>
+        </div>
 
-    async function handleClick() {
-      await initLiff();
+        <!-- 语速调节 -->
+        <div class="mb-3">
+            <div class="flex justify-between">
+                <span>语速</span>
+                <span id="speedVal" class="text-blue-600">1.0x</span>
+            </div>
+            <input type="range" id="speed" min="0.7" max="1.3" step="0.05" value="1.0" class="w-full">
+        </div>
 
-      if (!liff.isLoggedIn()) {
-        localStorage.setItem('wantToRedirect', '1');
-        liff.login();
-        return;
-      }
+        <!-- 情绪柔和度调节 -->
+        <div class="mb-5">
+            <div class="flex justify-between">
+                <span>情绪柔和度</span>
+                <span id="stableVal" class="text-blue-600">0.7</span>
+            </div>
+            <input type="range" id="stability" min="0.4" max="0.9" step="0.05" value="0.7" class="w-full">
+        </div>
 
-      await sendThenRedirect();
-    }
+        <!-- 生成按钮 -->
+        <button id="genBtn" class="w-full bg-green-600 text-white py-3 rounded font-bold">
+            生成配音 + 字幕
+        </button>
 
-    async function sendThenRedirect() {
-      try {
-        const profile = await liff.getProfile();
-        const data = {
-          userId: profile.userId || "無法取得",
-          displayName: profile.displayName || "未知使用者",
-          message: "Liff網頁",
-          replyMessage: "預約/連結預約",
-          timestamp: new Date().toISOString()
+        <!-- 状态提示 -->
+        <div id="status" class="mt-4 text-center hidden"></div>
+
+        <!-- 结果展示 -->
+        <div id="result" class="mt-4 p-3 bg-green-50 rounded hidden">
+            <p class="font-medium">✅ 处理完成</p>
+            <p class="text-sm mt-1">原视频：<a id="vUrl" target="_blank" class="text-blue-500 break-all"></a></p>
+            <p class="text-sm mt-1">我的声音配音：<a id="aUrl" target="_blank" class="text-blue-500 break-all"></a></p>
+            <p class="text-sm mt-1">繁体字幕：<a id="sUrl" target="_blank" class="text-blue-500 break-all"></a></p>
+        </div>
+    </div>
+
+<script>
+    // ========== 填写你的 GAS Web App 地址 ==========
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzqGzi4tNZo5DtedZWgRRhrE8DpAvKLZW83rp7xyXLkxfautVX0IVCX67VjdtiFpFCMmw/exec";
+
+    // 读取本地保存的声音ID
+    let MY_VOICE_ID = localStorage.getItem("MY_VOICE_ID") || "";
+
+    // 实时显示滑块数值
+    const speed = document.getElementById("speed");
+    const stability = document.getElementById("stability");
+    speed.oninput = () => document.getElementById("speedVal").innerText = speed.value + "x";
+    stability.oninput = () => document.getElementById("stableVal").innerText = stability.value;
+
+    // ============== 1. 克隆声音 ==============
+    document.getElementById("cloneBtn").onclick = async () => {
+        const file = document.getElementById("voiceFile").files[0];
+        const name = document.getElementById("voiceName").value.trim();
+        const tip = document.getElementById("cloneTip");
+
+        if (!file || !name) { alert("请上传录音并填写声音名称"); return; }
+        
+        tip.classList.remove("hidden");
+        tip.innerText = "克隆中...";
+        tip.style.color = "#333";
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async (e) => {
+            const base64 = e.target.result.split(',')[1];
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "clone",
+                    name: name,
+                    type: file.type,
+                    base64: base64
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                MY_VOICE_ID = data.voice_id;
+                localStorage.setItem("MY_VOICE_ID", MY_VOICE_ID);
+                tip.innerText = "✅ 克隆成功！已自动绑定你的声音";
+                tip.style.color = "green";
+            } else {
+                tip.innerText = "❌ 失败：" + data.msg;
+                tip.style.color = "red";
+            }
         };
-        const query = new URLSearchParams(data).toString();
-        await fetch(`${gasUrl}?${query}`);
-        console.log("✅ 資料已送出");
+    };
 
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 500);
-      } catch (e) {
-        console.error("❌ 發生錯誤：", e);
-        window.location.href = redirectUrl;
-      }
-    }
+    // ============== 2. 生成配音+字幕 ==============
+    document.getElementById("genBtn").onclick = async () => {
+        if (!MY_VOICE_ID) { alert("请先克隆你的声音！"); return; }
+        
+        const video = document.getElementById("videoFile").files[0];
+        const content = document.getElementById("content").value.trim();
+        if (!video || !content) { alert("请上传视频并输入文案"); return; }
 
-    window.addEventListener('load', async () => {
-      await initLiff();
+        const btn = document.getElementById("genBtn");
+        const status = document.getElementById("status");
+        const result = document.getElementById("result");
+        
+        btn.disabled = true;
+        status.classList.remove("hidden");
+        status.innerText = "处理中，请稍候...";
+        result.classList.add("hidden");
 
-      if (liff.isLoggedIn() && localStorage.getItem('wantToRedirect') === '1') {
-        localStorage.removeItem('wantToRedirect');
-        await sendThenRedirect();
-      }
-    });
-  </script>
+        const reader = new FileReader();
+        reader.readAsDataURL(video);
+        reader.onload = async (e) => {
+            const base64 = e.target.result.split(',')[1];
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "generate",
+                    voice_id: MY_VOICE_ID,
+                    filename: video.name,
+                    filetype: video.type,
+                    base64: base64,
+                    content: content,
+                    speed: speed.value,
+                    stability: stability.value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                status.innerText = "✅ 生成完成！";
+                document.getElementById("vUrl").href = data.video;
+                document.getElementById("vUrl").innerText = data.video;
+                document.getElementById("aUrl").href = data.audio;
+                document.getElementById("aUrl").innerText = data.audio;
+                document.getElementById("sUrl").href = data.subtitle;
+                document.getElementById("sUrl").innerText = data.subtitle;
+                result.classList.remove("hidden");
+            } else {
+                status.innerText = "❌ 失败：" + data.msg;
+            }
+            btn.disabled = false;
+        };
+    };
+</script>
 </body>
 </html>
