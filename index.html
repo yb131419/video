@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 声音克隆 & 影片生成工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 flex justify-center items-center">
     <div class="w-full max-w-lg bg-white rounded-2xl shadow-md p-6">
@@ -23,7 +24,7 @@
         <!-- 视频上传 -->
         <div class="mb-4">
             <label class="font-medium block mb-1">第二步：上传MP4视频</label>
-            <input type="file" id="videoFile" accept="video/mp4" class="w-full border p-2 rounded">
+            <input type="file" id="videoFile" accept="video/mp4" class="w-full border p-2 rounded mb-2">
         </div>
 
         <!-- 文案输入 -->
@@ -69,7 +70,7 @@
 
 <script>
     // ========== 填写你的 GAS Web App 地址 ==========
-    const GAS_URL = "这里粘贴你的GAS网址";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzqGzi4tNZo5DtedZWgRRhrE8DpAvKLZW83rp7xyXLkxfautVX0IVCX67VjdtiFpFCMmw/exec";
 
     // 读取本地保存的声音ID
     let MY_VOICE_ID = localStorage.getItem("MY_VOICE_ID") || "";
@@ -80,7 +81,46 @@
     speed.oninput = () => document.getElementById("speedVal").innerText = speed.value + "x";
     stability.oninput = () => document.getElementById("stableVal").innerText = stability.value;
 
-    // ============== 1. 克隆声音 ==============
+    // ============== 核心修复：M4A 自动转 MP3 ============
+    async function convertToMp3(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const arrayBuffer = e.target.result;
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                audioContext.decodeAudioData(arrayBuffer, (buffer) => {
+                    const channels = buffer.numberOfChannels;
+                    const sampleRate = 44100;
+                    const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
+                    const samples = buffer.getChannelData(0);
+                    const data = [];
+                    
+                    const floatTo16BitPCM = (input) => {
+                        const output = new Int16Array(input.length);
+                        for (let i = 0; i < input.length; i++) {
+                            let s = Math.max(-1, Math.min(1, input[i]));
+                            output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        }
+                        return output;
+                    };
+
+                    const sample16 = floatTo16BitPCM(samples);
+                    const mp3buf = mp3encoder.encodeBuffer(sample16);
+                    if (mp3buf.length > 0) data.push(mp3buf);
+                    
+                    const endBuf = mp3encoder.flush();
+                    if (endBuf.length > 0) data.push(endBuf);
+                    
+                    const blob = new Blob(data, { type: 'audio/mp3' });
+                    resolve(blob);
+                }, reject);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // ============== 1. 克隆声音（已修复 M4A）==============
     document.getElementById("cloneBtn").onclick = async () => {
         const file = document.getElementById("voiceFile").files[0];
         const name = document.getElementById("voiceName").value.trim();
@@ -89,33 +129,40 @@
         if (!file || !name) { alert("请上传录音并填写声音名称"); return; }
         
         tip.classList.remove("hidden");
-        tip.innerText = "克隆中...";
-        tip.style.color = "#333";
+        tip.innerText = "M4A 转 MP3 中，请勿关闭...";
+        tip.style.color = "blue";
 
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async (e) => {
-            const base64 = e.target.result.split(',')[1];
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({
-                    action: "clone",
-                    name: name,
-                    type: file.type,
-                    base64: base64
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                MY_VOICE_ID = data.voice_id;
-                localStorage.setItem("MY_VOICE_ID", MY_VOICE_ID);
-                tip.innerText = "✅ 克隆成功！已自动绑定你的声音";
-                tip.style.color = "green";
-            } else {
-                tip.innerText = "❌ 失败：" + data.msg;
-                tip.style.color = "red";
-            }
-        };
+        try {
+            const mp3Blob = await convertToMp3(file);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(mp3Blob);
+            reader.onload = async (e) => {
+                const base64 = e.target.result.split(',')[1];
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "clone",
+                        name: name,
+                        type: "audio/mp3",
+                        base64: base64
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    MY_VOICE_ID = data.voice_id;
+                    localStorage.setItem("MY_VOICE_ID", MY_VOICE_ID);
+                    tip.innerText = "✅ 克隆成功！已自动绑定你的声音";
+                    tip.style.color = "green";
+                } else {
+                    tip.innerText = "❌ 失败：" + data.msg;
+                    tip.style.color = "red";
+                }
+            };
+        } catch (err) {
+            tip.innerText = "❌ 格式转换失败";
+            tip.style.color = "red";
+        }
     };
 
     // ============== 2. 生成配音+字幕 ==============
