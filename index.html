@@ -144,16 +144,16 @@
     speed.oninput = () => document.getElementById("speedVal").innerText = speed.value + "x";
     stability.oninput = () => document.getElementById("stableVal").innerText = stability.value;
 
-    // 进度条
+    // 进度条 1% 慢速跑
     function startProgress() {
         progressArea.classList.remove("hidden");
         let percent = 0;
         const interval = setInterval(() => {
-            percent += 5;
+            percent += 1;
             if (percent > 95) percent = 95;
             progressBar.value = percent;
             statusText.innerText = `處理中：${percent}%`;
-        }, 600);
+        }, 300);
         return interval;
     }
 
@@ -289,12 +289,10 @@
                     statusText.innerText = "✅ 處理完成！";
                     statusText.style.color = "green";
                     
-                    // 只赋值视频
                     document.getElementById("vUrl").href = data.video;
                     document.getElementById("vDl").href = data.video;
                     result.classList.remove("hidden");
 
-                    // 仅保存视频到历史
                     saveHistory(data.video);
                 } else {
                     statusText.innerText = "❌ 失敗：" + data.msg;
