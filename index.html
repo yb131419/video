@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> 彥彬 影片生成系統 </title>
+    <title> 彥彬 🎞️影片生成系統 </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 flex justify-center items-center">
     <div class="w-full max-w-lg bg-white rounded-2xl shadow-md p-6">
-        <h2 class="text-2xl font-bold text-center mb-4">🎙️ AI 配音工具（免费版）</h2>
+        <h2 class="text-2xl font-bold text-center mb-4">🎙️ 彥彬 AI 影片生成系統</h2>
 
         <!-- 声音选择 -->
         <div class="bg-blue-50 p-4 rounded-xl mb-5 border border-blue-200">
             <h3 class="font-bold text-blue-700 mb-2">選擇語音</h3>
             <select id="voiceMode" class="w-full border p-2 rounded mb-2">
-                <option value="free">免費語音（推薦，不用錢）</option>
-                <option value="custom">自訂克隆語音（需付費）</option>
+                <option value="free">免費語音（推薦）</option>
+                <option value="custom">自訂克隆語音（付費）</option>
             </select>
 
-            <!-- 克隆声音区域（只有选自定义才显示） -->
             <div id="cloneArea" class="hidden mt-3">
                 <p class="text-xs text-gray-500 mb-2">上傳30-60秒無雜音錄音(m4a/mp3/wav)</p>
                 <input type="file" id="voiceFile" accept="audio/m4a,audio/mp3,audio/wav,audio/x-m4a" class="w-full border p-2 rounded mb-2">
@@ -31,14 +30,14 @@
 
         <!-- 视频上传 -->
         <div class="mb-4">
-            <label class="font-medium block mb-1">上傳MP4視頻</label>
+            <label class="font-medium block mb-1">上傳MP4視頻（建議<10秒）</label>
             <input type="file" id="videoFile" accept="video/mp4" class="w-full border p-2 rounded">
         </div>
 
         <!-- 文案输入 -->
         <div class="mb-4">
             <label class="font-medium block mb-1">配音文案</label>
-            <textarea id="content" rows="4" class="w-full border p-2 rounded" placeholder="輸入你要配音的文字"></textarea>
+            <textarea id="content" rows="3" class="w-full border p-2 rounded" placeholder="輸入你要配音的文字"></textarea>
         </div>
 
         <!-- 语速调节 -->
@@ -65,7 +64,7 @@
         </button>
 
         <!-- 状态提示 -->
-        <div id="status" class="mt-4 text-center hidden"></div>
+        <div id="status" class="mt-4 text-center hidden text-red-500"></div>
 
         <!-- 结果展示 -->
         <div id="result" class="mt-4 p-3 bg-green-50 rounded hidden">
@@ -85,7 +84,6 @@
     const voiceMode = document.getElementById("voiceMode");
     const cloneArea = document.getElementById("cloneArea");
 
-    // 切换显示克隆区域
     voiceMode.onchange = () => {
         cloneArea.classList.toggle("hidden", voiceMode.value !== "custom");
     };
@@ -93,7 +91,7 @@
     speed.oninput = () => document.getElementById("speedVal").innerText = speed.value + "x";
     stability.oninput = () => document.getElementById("stableVal").innerText = stability.value;
 
-    // M4A 转 MP3
+    // M4A 轉 MP3
     async function convertToMp3(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -129,7 +127,7 @@
         });
     }
 
-    // 克隆声音
+    // 克隆聲音
     document.getElementById("cloneBtn").onclick = async () => {
         const file = document.getElementById("voiceFile").files[0];
         const name = document.getElementById("voiceName").value.trim();
@@ -161,7 +159,7 @@
                     tip.innerText = "✅ 克隆成功！";
                     tip.style.color = "green";
                 } else {
-                    tip.innerText = "❌ 失敗：" + data.msg;
+                    tip.innerText = "❌ 失敗：免費帳號不支援克隆";
                     tip.style.color = "red";
                 }
             };
@@ -171,14 +169,22 @@
         }
     };
 
-    // 生成配音
+    // 生成配音（修复卡死）
     document.getElementById("genBtn").onclick = async () => {
         const video = document.getElementById("videoFile").files[0];
         const content = document.getElementById("content").value.trim();
         const mode = voiceMode.value;
 
-        if (!video || !content) { alert("請上傳視頻並輸入文案"); return; }
-        if (mode === "custom" && !MY_VOICE_ID) { alert("請先克隆聲音"); return; }
+        if (!video || !content) {
+            alert("請上傳影片 + 輸入文案");
+            return;
+        }
+
+        // 限制影片大小 < 20MB
+        if (video.size > 20 * 1024 * 1024) {
+            alert("影片太大，請上傳 < 20MB 的影片");
+            return;
+        }
 
         const btn = document.getElementById("genBtn");
         const status = document.getElementById("status");
@@ -186,42 +192,59 @@
         
         btn.disabled = true;
         status.classList.remove("hidden");
-        status.innerText = "處理中...";
+        status.innerText = "⏳ 處理中，請稍候...";
+        status.style.color = "#333";
         result.classList.add("hidden");
 
-        const reader = new FileReader();
-        reader.readAsDataURL(video);
-        reader.onload = async function(e) {
-            const base64 = e.target.result.split(',')[1];
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({
-                    action: "generate",
-                    voice_mode: mode,
-                    voice_id: MY_VOICE_ID,
-                    filename: video.name,
-                    filetype: video.type,
-                    base64: base64,
-                    content: content,
-                    speed: speed.value,
-                    stability: stability.value
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                status.innerText = "✅ 生成完成！";
-                document.getElementById("vUrl").href = data.video;
-                document.getElementById("vUrl").innerText = data.video;
-                document.getElementById("aUrl").href = data.audio;
-                document.getElementById("aUrl").innerText = data.audio;
-                document.getElementById("sUrl").href = data.subtitle;
-                document.getElementById("sUrl").innerText = data.subtitle;
-                result.classList.remove("hidden");
-            } else {
-                status.innerText = "❌ 失敗：" + data.msg;
-            }
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(video);
+            reader.onload = async function(e) {
+                const base64 = e.target.result.split(',')[1];
+                
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "generate",
+                        voice_mode: mode,
+                        voice_id: MY_VOICE_ID,
+                        filename: video.name,
+                        filetype: video.type,
+                        base64: base64,
+                        content: content,
+                        speed: speed.value,
+                        stability: stability.value
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    status.innerText = "✅ 生成完成！";
+                    status.style.color = "green";
+                    document.getElementById("vUrl").href = data.video;
+                    document.getElementById("vUrl").innerText = data.video;
+                    document.getElementById("aUrl").href = data.audio;
+                    document.getElementById("aUrl").innerText = data.audio;
+                    document.getElementById("sUrl").href = data.subtitle;
+                    document.getElementById("sUrl").innerText = data.subtitle;
+                    result.classList.remove("hidden");
+                } else {
+                    status.innerText = "❌ 失敗：" + data.msg;
+                    status.style.color = "red";
+                }
+                btn.disabled = false;
+            };
+
+            reader.onerror = function() {
+                status.innerText = "❌ 讀取影片失敗";
+                status.style.color = "red";
+                btn.disabled = false;
+            };
+        } catch (err) {
+            status.innerText = "❌ 網路錯誤";
+            status.style.color = "red";
             btn.disabled = false;
-        };
+        }
     };
 </script>
 </body>
