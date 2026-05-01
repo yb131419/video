@@ -86,25 +86,23 @@
             <progress id="progressBar" value="0" max="100"></progress>
         </div>
 
-        <!-- 历史记录（关闭网页还在） -->
-        <div id="historySection" class="mt-6 hidden">
-            <h3 class="font-bold text-gray-700 mb-2">📂 上一次生成檔案</h3>
-            <div class="bg-gray-50 p-3 rounded-lg border text-sm">
-                <p>
-                    影片：
-                    <a id="hVideo" target="_blank" class="text-blue-600 mx-1">線上觀看</a>
-                    <a id="hVideoDl" download class="text-blue-600 mx-1">下載</a>
-                </p>
-            </div>
+        <!-- 视频预览（直接播放，不占空间） -->
+        <div id="videoArea" class="mt-4 hidden">
+            <h3 class="font-medium text-center mb-2">🎬 預覽影片</h3>
+            <video id="videoPlayer" controls class="w-full rounded-lg border"></video>
         </div>
 
-        <!-- 结果展示（仅视频） -->
-        <div id="result" class="mt-4 p-3 bg-green-50 rounded hidden">
+        <!-- 下载按钮 -->
+        <div id="result" class="mt-4 p-3 bg-green-50 rounded hidden text-center">
             <p class="font-medium">✅ 處理完成！</p>
-            <p class="mt-2">
-                <a id="vUrl" target="_blank" class="text-blue-600 px-2">線上觀看</a>
-                <a id="vDl" download class="text-blue-600 px-2">下載影片</a>
-            </p>
+            <a id="downloadBtn" download class="inline-block mt-2 bg-blue-600 text-white px-4 py-2 rounded">下載影片</a>
+        </div>
+
+        <!-- 历史记录 -->
+        <div id="historySection" class="mt-6 hidden">
+            <h3 class="font-bold text-gray-700 mb-2">📂 上一次生成檔案</h3>
+            <button id="playLast" class="w-full bg-gray-100 py-2 rounded border mb-2">播放上次影片</button>
+            <a id="downloadLast" download class="w-full bg-blue-600 text-white py-2 rounded inline-block">下載上次影片</a>
         </div>
     </div>
 
@@ -119,21 +117,31 @@
     const progressArea = document.getElementById("progressArea");
     const progressBar = document.getElementById("progressBar");
     const statusText = document.getElementById("statusText");
+    const videoPlayer = document.getElementById("videoPlayer");
+    const videoArea = document.getElementById("videoArea");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const result = document.getElementById("result");
+    const historySection = document.getElementById("historySection");
+    const playLast = document.getElementById("playLast");
+    const downloadLast = document.getElementById("downloadLast");
 
-    // 读取历史记录（仅保存视频）
+    // 读取历史
     function loadHistory() {
-        const hist = JSON.parse(localStorage.getItem("LAST_RESULT") || "null");
-        if (hist) {
-            document.getElementById("hVideo").href = hist.video;
-            document.getElementById("hVideoDl").href = hist.video;
-            document.getElementById("historySection").classList.remove("hidden");
+        const last = localStorage.getItem("LAST_VIDEO");
+        if (last) {
+            historySection.classList.remove("hidden");
+            playLast.onclick = () => {
+                videoArea.classList.remove("hidden");
+                videoPlayer.src = last;
+                videoPlayer.play();
+            };
+            downloadLast.href = last;
         }
     }
 
-    // 保存历史（仅保存视频）
-    function saveHistory(video) {
-        const data = { video };
-        localStorage.setItem("LAST_RESULT", JSON.stringify(data));
+    // 保存历史
+    function saveHistory(url) {
+        localStorage.setItem("LAST_VIDEO", url);
         loadHistory();
     }
 
@@ -144,7 +152,7 @@
     speed.oninput = () => document.getElementById("speedVal").innerText = speed.value + "x";
     stability.oninput = () => document.getElementById("stableVal").innerText = stability.value;
 
-    // 进度条 1% 慢速跑
+    // 进度条 1% 慢速
     function startProgress() {
         progressArea.classList.remove("hidden");
         let percent = 0;
@@ -157,165 +165,65 @@
         return interval;
     }
 
-    // M4A 轉 MP3
-    async function convertToMp3(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const arrayBuffer = e.target.result;
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                audioCtx.decodeAudioData(arrayBuffer).then(buffer => {
-                    const sampleRate = 44100;
-                    const mp3enc = new lamejs.Mp3Encoder(1, sampleRate, 128);
-                    const leftChannel = buffer.getChannelData(0);
-                    const data = [];
-
-                    const floatTo16 = (floatArr) => {
-                        const int16 = new Int16Array(floatArr.length);
-                        for (let i = 0; i < floatArr.length; i++) {
-                            let s = Math.max(-1, Math.min(1, floatArr[i]));
-                            int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                        }
-                        return int16;
-                    };
-
-                    const left16 = floatTo16(leftChannel);
-                    const mp3buf = mp3enc.encodeBuffer(left16);
-                    if (mp3buf.length > 0) data.push(mp3buf);
-                    const end = mp3enc.flush();
-                    if (end.length > 0) data.push(end);
-
-                    const blob = new Blob(data, { type: 'audio/mp3' });
-                    resolve(blob);
-                }).catch(reject);
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
-    // 克隆聲音
-    document.getElementById("cloneBtn").onclick = async () => {
-        const file = document.getElementById("voiceFile").files[0];
-        const name = document.getElementById("voiceName").value.trim();
-        const tip = document.getElementById("cloneTip");
-
-        if (!file || !name) { alert("請上傳錄音並填寫名稱"); return; }
-        tip.classList.remove("hidden");
-        tip.innerText = "🔄 轉檔中...";
-        tip.style.color = "blue";
-
-        try {
-            const mp3Blob = await convertToMp3(file);
-            const reader = new FileReader();
-            reader.readAsDataURL(mp3Blob);
-            reader.onload = async function(e) {
-                const base64 = e.target.result.split(',')[1];
-                const res = await fetch(GAS_URL, {
-                    method: "POST",
-                    body: JSON.stringify({
-                        action: "clone",
-                        name: name,
-                        base64: base64
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    MY_VOICE_ID = data.voice_id;
-                    localStorage.setItem("MY_VOICE_ID", MY_VOICE_ID);
-                    tip.innerText = "✅ 克隆成功！";
-                    tip.style.color = "green";
-                } else {
-                    tip.innerText = "❌ 失敗：免費帳號不支援克隆";
-                    tip.style.color = "red";
-                }
-            };
-        } catch (err) {
-            tip.innerText = "❌ 轉檔失敗";
-            tip.style.color = "red";
-        }
-    };
-
-    // 生成配音
+    // 生成
     document.getElementById("genBtn").onclick = async () => {
         const video = document.getElementById("videoFile").files[0];
         const content = document.getElementById("content").value.trim();
-        const mode = voiceMode.value;
 
         if (!video || !content) {
             alert("請上傳影片 + 輸入文案");
             return;
         }
-
         if (video.size > 20 * 1024 * 1024) {
             alert("⚠️ 影片超過 20MB，請壓縮後再上傳");
             return;
         }
 
         const btn = document.getElementById("genBtn");
-        const result = document.getElementById("result");
         btn.disabled = true;
         result.classList.add("hidden");
-        
-        const progressTimer = startProgress();
+        videoArea.classList.add("hidden");
+        const timer = startProgress();
 
         try {
             const reader = new FileReader();
             reader.readAsDataURL(video);
-
-            reader.onload = async function(e) {
+            reader.onload = async (e) => {
                 const base64 = e.target.result.split(',')[1];
                 
                 const res = await fetch(GAS_URL, {
                     method: "POST",
                     body: JSON.stringify({
                         action: "generate",
-                        voice_mode: mode,
-                        voice_id: MY_VOICE_ID,
-                        filename: video.name,
-                        filetype: video.type,
-                        base64: base64,
-                        content: content,
+                        voice_mode: "free",
+                        base64, content,
                         speed: speed.value,
                         stability: stability.value
                     })
                 });
 
-                clearInterval(progressTimer);
+                clearInterval(timer);
                 progressBar.value = 100;
-                statusText.innerText = "處理中：100%";
+                statusText.innerText = "✅ 處理完成！";
+                statusText.style.color = "green";
 
-                const data = await res.json();
-                if (data.success) {
-                    statusText.innerText = "✅ 處理完成！";
-                    statusText.style.color = "green";
-                    
-                    document.getElementById("vUrl").href = data.video;
-                    document.getElementById("vDl").href = data.video;
-                    result.classList.remove("hidden");
+                const blob = await res.blob();
+                const videoUrl = URL.createObjectURL(blob);
 
-                    saveHistory(data.video);
-                } else {
-                    statusText.innerText = "❌ 失敗：" + data.msg;
-                    statusText.style.color = "red";
-                }
+                videoArea.classList.remove("hidden");
+                videoPlayer.src = videoUrl;
+                downloadBtn.href = videoUrl;
+                result.classList.remove("hidden");
+
+                saveHistory(videoUrl);
                 btn.disabled = false;
             };
-
-            reader.onerror = function() {
-                clearInterval(progressTimer);
-                statusText.innerText = "❌ 讀取影片失敗";
-                statusText.style.color = "red";
-                btn.disabled = false;
-            };
-        } catch (err) {
-            clearInterval(progressTimer);
-            statusText.innerText = "❌ 網路錯誤";
-            statusText.style.color = "red";
+        } catch (e) {
+            alert("處理失敗");
             btn.disabled = false;
         }
     };
 
-    // 启动时加载历史
     window.onload = loadHistory;
 </script>
 </body>
