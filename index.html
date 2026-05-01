@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> 彥彬 影音系統</title>
+    <title>AI 声音克隆 & 影片生成工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 flex justify-center items-center">
@@ -13,8 +13,8 @@
         <!-- 声音克隆区域 -->
         <div class="bg-blue-50 p-4 rounded-xl mb-5 border border-blue-200">
             <h3 class="font-bold text-blue-700 mb-2">第一步：克隆你的声音</h3>
-            <p class="text-xs text-gray-500 mb-2">上传30-60秒无杂音录音(MP3/WAV)</p>
-            <input type="file" id="voiceFile" accept="audio/mp3,audio/wav" class="w-full border p-2 rounded mb-2">
+            <p class="text-xs text-gray-500 mb-2">上传30-60秒无杂音录音(m4a/mp3/wav)</p>
+            <input type="file" id="voiceFile" accept="audio/m4a,audio/mp3,audio/wav" class="w-full border p-2 rounded mb-2">
             <input type="text" id="voiceName" placeholder="给声音起个名字" class="w-full border p-2 rounded mb-2">
             <button id="cloneBtn" class="w-full bg-blue-600 text-white py-2 rounded">克隆我的声音</button>
             <div id="cloneTip" class="text-sm mt-2 hidden"></div>
@@ -69,7 +69,7 @@
 
 <script>
     // ========== 填写你的 GAS Web App 地址 ==========
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzqGzi4tNZo5DtedZWgRRhrE8DpAvKLZW83rp7xyXLkxfautVX0IVCX67VjdtiFpFCMmw/exec";
+    const GAS_URL = "这里粘贴你的GAS网址";
 
     // 读取本地保存的声音ID
     let MY_VOICE_ID = localStorage.getItem("MY_VOICE_ID") || "";
